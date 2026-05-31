@@ -7,48 +7,46 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Primordial Simulation 0.1</p>
-        <h1>Evolution Idle</h1>
-        <p class="subtitle">Begin as chemistry in a quiet ocean. Discover traits, unlock eras, and guide life through deep time.</p>
-      </div>
-      <button id="resetBtn" class="ghost">Reset Save</button>
+  <div class="game-shell">
+    <header class="top-bar">
+      <div class="speed">x<span id="speedDisplay">1</span></div>
+      <button id="resetBtn" class="menu-btn">Menu</button>
     </header>
 
-    <main class="layout">
-      <section class="panel main-panel">
-        <div class="era-row">
-          <div>
-            <p class="label">Current Era</p>
-            <h2 id="eraName">Primordial Soup</h2>
-          </div>
-          <div class="badge" id="organismName">Prebiotic Chemistry</div>
-        </div>
-
-        <div class="resource-card">
-          <p class="label">Biomass</p>
-          <div class="resource-line"><span id="biomass">0</span><span class="rate">+<span id="biomassRate">0</span>/sec</span></div>
-          <button id="clickBtn" class="primary">Catalyze Reactions</button>
-        </div>
-
-        <div class="progress-wrap">
-          <div class="progress-label"><span>Next Discovery</span><span id="nextDiscoveryText">Cell Membrane</span></div>
-          <div class="progress"><div id="progressFill"></div></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Discoveries</h2>
-        <div id="upgrades" class="upgrade-list"></div>
-      </section>
-
-      <section class="panel timeline-panel">
-        <h2>Timeline</h2>
-        <div id="timeline" class="timeline"></div>
-      </section>
+    <main class="screen">
+      <section class="research-list" id="researchList" aria-label="Research options"></section>
     </main>
+
+    <section class="era-strip" aria-label="Eras">
+      <button class="era-tab active">I</button>
+      <button class="era-tab" id="eraTwoTab">II</button>
+      <button class="era-tab locked">III</button>
+      <button class="era-tab locked">IV</button>
+      <button class="era-tab locked">V</button>
+    </section>
+
+    <section class="resource-board" aria-label="Resources">
+      <div class="primary-resource">
+        <div class="resource-symbol">🧬</div>
+        <div><span id="biomassDisplay">0</span> biomass</div>
+      </div>
+
+      <div class="resource-grid">
+        <div class="resource insight"><span id="insightMult">x1.00</span> 💡</div>
+        <div class="resource energy"><span id="energyMult">x1.00</span> ⚡</div>
+        <div class="resource stability"><span id="stabilityMult">x1.00</span> 🛡️</div>
+        <div class="resource adaptation"><span id="adaptationDisplay">0</span> 🧭</div>
+        <div class="resource complexity"><span id="complexityDisplay">0</span> ✦</div>
+        <div class="resource tools"><span id="toolDisplay">0</span> 🔨</div>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Game sections">
+      <button class="nav-btn active">💡</button>
+      <button class="nav-btn">🧬</button>
+      <button class="nav-btn">🧭</button>
+      <button class="nav-btn">🌀</button>
+    </nav>
   </div>
 
   <script src="game.js"></script>

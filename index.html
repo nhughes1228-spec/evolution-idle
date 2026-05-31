@@ -14,38 +14,44 @@
     </header>
 
     <main class="screen">
-      <section class="research-list" id="researchList" aria-label="Research options"></section>
+      <section class="view active" id="ideasView">
+        <section class="research-list" id="researchList" aria-label="Research options"></section>
+        <section class="era-strip" aria-label="Eras">
+          <button class="era-tab active">I</button>
+          <button class="era-tab locked">II</button>
+          <button class="era-tab locked">III</button>
+          <button class="era-tab locked">IV</button>
+          <button class="era-tab locked">V</button>
+          <button class="era-tab locked">VI</button>
+          <button class="era-tab locked">VII</button>
+          <button class="era-tab locked">VIII</button>
+          <button class="era-tab locked">IX</button>
+          <button class="era-tab locked">X</button>
+        </section>
+      </section>
+
+      <section class="view" id="productionView">
+        <div class="placeholder-panel">Production will come next.</div>
+      </section>
+
+      <section class="view" id="explorationView">
+        <section class="exploration-list" id="explorationList"></section>
+      </section>
+
+      <section class="view" id="prestigeView">
+        <div class="placeholder-panel">Prestige will come later.</div>
+      </section>
     </main>
 
-    <section class="era-strip" aria-label="Eras">
-      <button class="era-tab active">I</button>
-      <button class="era-tab" id="eraTwoTab">II</button>
-      <button class="era-tab locked">III</button>
-      <button class="era-tab locked">IV</button>
-      <button class="era-tab locked">V</button>
-    </section>
-
     <section class="resource-board" aria-label="Resources">
-      <div class="primary-resource">
-        <div class="resource-symbol">🧬</div>
-        <div><span id="biomassDisplay">0</span> biomass</div>
-      </div>
-
-      <div class="resource-grid">
-        <div class="resource insight"><span id="insightMult">x1.00</span> 💡</div>
-        <div class="resource energy"><span id="energyMult">x1.00</span> ⚡</div>
-        <div class="resource stability"><span id="stabilityMult">x1.00</span> 🛡️</div>
-        <div class="resource adaptation"><span id="adaptationDisplay">0</span> 🧭</div>
-        <div class="resource complexity"><span id="complexityDisplay">0</span> ✦</div>
-        <div class="resource tools"><span id="toolDisplay">0</span> 🔨</div>
-      </div>
+      <div class="resource-grid" id="resourceGrid"></div>
     </section>
 
     <nav class="bottom-nav" aria-label="Game sections">
-      <button class="nav-btn active">💡</button>
-      <button class="nav-btn">🧬</button>
-      <button class="nav-btn">🧭</button>
-      <button class="nav-btn">🌀</button>
+      <button class="nav-btn active" data-view="ideas">💡</button>
+      <button class="nav-btn" data-view="production">🔨</button>
+      <button class="nav-btn" data-view="exploration">🧭</button>
+      <button class="nav-btn" data-view="prestige">🌀</button>
     </nav>
   </div>
 

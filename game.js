@@ -10,9 +10,18 @@ const researchDefs = [
   { id: "dna", era: 2, name: "DNA", icon: "💡", color: "pink", description: "Genetic memory becomes sturdier and more expandable.", baseTime: 8, timeScale: 1.3, gains: { insight: 5, stability: 3, complexity: 2 }, requires: { replication: 5, protocells: 5 }, visible: s => level(s, "replication") >= 3 && level(s, "protocells") >= 3 }
 ];
 
-const defaultState = { selected: "amino", progress: {}, levels: {}, resources: { biomass: 0, insight: 0, energy: 0, stability: 0, adaptation: 0, complexity: 0, tools: 0 }, speedBonus: 0, lastTick: Date.now() };
+const defaultState = {
+  selected: null,
+  progress: {},
+  levels: {},
+  resources: { biomass: 0, insight: 0, energy: 0, stability: 0, adaptation: 0, complexity: 0, tools: 0 },
+  speedBonus: 0,
+  lastTick: Date.now()
+};
+
 let state = JSON.parse(JSON.stringify(defaultState));
-let lastRender = 0;
+let lastFullRender = 0;
+let lastSave = 0;
 
 const els = {
   researchList: document.getElementById("researchList"),
@@ -39,8 +48,9 @@ function researchSpeed() { return 1 + state.speedBonus + state.resources.insight
 function selectResearch(id) {
   const def = researchDefs.find(r => r.id === id);
   if (!def || !isUnlocked(def)) return;
-  state.selected = id;
-  render(true);
+  state.selected = state.selected === id ? null : id;
+  renderFull(true);
+  updateProgressBars();
   save();
 }
 
@@ -51,26 +61,30 @@ function completeResearch(def) {
     if (key === "speed") state.speedBonus += value;
     else state.resources[key] += value * (1 + level(state, def.id) * 0.08);
   }
-  render(true);
+  renderFull(true);
 }
 
-function render(force = false) {
+function renderFull(force = false) {
   const now = Date.now();
-  if (!force && now - lastRender < 120) return;
-  lastRender = now;
+  if (!force && now - lastFullRender < 500) return;
+  lastFullRender = now;
 
   els.researchList.innerHTML = visibleResearch().map(def => {
     const unlocked = isUnlocked(def);
     const currentLevel = level(state, def.id);
-    const progress = ((state.progress[def.id] || 0) / researchTime(def)) * 100;
     const reqText = def.requires ? Object.entries(def.requires).map(([id, req]) => `${researchDefs.find(r => r.id === id).name} ${req}`).join(" · ") : "Available";
     return `<button type="button" class="research-row ${def.color} ${state.selected === def.id ? "selected" : ""} ${unlocked ? "" : "locked"}" data-id="${def.id}">
-      <div class="level-box">${currentLevel}</div>
-      <div class="research-main"><div class="research-title">${def.name}</div><div class="research-desc">${unlocked ? def.description : "Requires: " + reqText}</div><div class="bar"><div class="fill" style="width:${Math.min(100, progress)}%"></div></div></div>
+      <div class="fill" data-fill="${def.id}"></div>
+      <div class="level-box" data-level="${def.id}">${currentLevel}</div>
+      <div class="research-main"><div class="research-title">${def.name}</div><div class="research-desc">${unlocked ? def.description : "Requires: " + reqText}</div></div>
       <div class="reward-box">${gainText(def)}<span class="row-icon">${def.icon}</span></div>
     </button>`;
   }).join("");
 
+  renderResources();
+}
+
+function renderResources() {
   els.biomassDisplay.textContent = format(state.resources.biomass);
   els.insightMult.textContent = "x" + (1 + state.resources.insight * 0.01).toFixed(2);
   els.energyMult.textContent = "x" + (1 + state.resources.energy * 0.01).toFixed(2);
@@ -82,8 +96,17 @@ function render(force = false) {
   if (visibleResearch().some(r => r.era === 2)) els.eraTwoTab.classList.remove("locked");
 }
 
-function save() { localStorage.setItem("evolutionIdleSaveV3", JSON.stringify(state)); }
-function load() { const saved = localStorage.getItem("evolutionIdleSaveV3"); if (saved) state = { ...JSON.parse(JSON.stringify(defaultState)), ...JSON.parse(saved), lastTick: Date.now() }; }
+function updateProgressBars() {
+  for (const def of visibleResearch()) {
+    const fill = document.querySelector(`[data-fill="${def.id}"]`);
+    if (!fill) continue;
+    const progress = ((state.progress[def.id] || 0) / researchTime(def)) * 100;
+    fill.style.transform = `scaleX(${Math.max(0, Math.min(1, progress / 100))})`;
+  }
+}
+
+function save() { localStorage.setItem("evolutionIdleSaveV4", JSON.stringify(state)); }
+function load() { const saved = localStorage.getItem("evolutionIdleSaveV4"); if (saved) state = { ...JSON.parse(JSON.stringify(defaultState)), ...JSON.parse(saved), lastTick: Date.now() }; }
 
 els.researchList.addEventListener("click", event => {
   const row = event.target.closest(".research-row");
@@ -92,24 +115,28 @@ els.researchList.addEventListener("click", event => {
 
 els.resetBtn.addEventListener("click", () => {
   if (!confirm("Reset your Evolution Idle save?")) return;
-  localStorage.removeItem("evolutionIdleSaveV3");
+  localStorage.removeItem("evolutionIdleSaveV4");
   location.reload();
 });
 
 function loop() {
   const now = Date.now();
-  const delta = Math.min(0.1, (now - state.lastTick) / 1000);
+  const delta = Math.min(0.05, (now - state.lastTick) / 1000);
   state.lastTick = now;
+
   const active = researchDefs.find(r => r.id === state.selected);
   if (active && isUnlocked(active)) {
     state.progress[active.id] = (state.progress[active.id] || 0) + delta * researchSpeed();
     if (state.progress[active.id] >= researchTime(active)) completeResearch(active);
   }
-  render();
-  save();
+
+  updateProgressBars();
+  renderResources();
+  if (now - lastSave > 1000) { save(); lastSave = now; }
   requestAnimationFrame(loop);
 }
 
 load();
-render(true);
+renderFull(true);
+updateProgressBars();
 loop();

@@ -1,192 +1,281 @@
-const upgrades = [
+const researchDefs = [
   {
-    id: "membrane",
-    name: "Cell Membrane",
-    description: "Life learns the difference between inside and outside.",
-    cost: 25,
-    clickBonus: 1,
-    rateBonus: 0.1,
-    era: "Primordial Soup",
-    organism: "Proto-Cell"
+    id: "amino",
+    era: 1,
+    name: "Amino Acids",
+    icon: "🧬",
+    color: "cyan",
+    description: "Simple organic molecules begin to collect in the ancient sea.",
+    baseTime: 1.4,
+    timeScale: 1.18,
+    gains: { biomass: 1 },
+    visible: () => true
+  },
+  {
+    id: "membranes",
+    era: 1,
+    name: "Lipid Membranes",
+    icon: "🛡️",
+    color: "green",
+    description: "Boundaries form. Inside and outside become meaningful.",
+    baseTime: 1.8,
+    timeScale: 1.2,
+    gains: { stability: 1 },
+    visible: () => true
   },
   {
     id: "rna",
-    name: "RNA Replication",
-    description: "Information begins copying itself, imperfectly and wonderfully.",
-    cost: 120,
-    clickBonus: 2,
-    rateBonus: 0.4,
-    era: "First Life",
-    organism: "Self-Replicator"
+    era: 1,
+    name: "RNA Strands",
+    icon: "💡",
+    color: "pink",
+    description: "Information begins to store itself in fragile chains.",
+    baseTime: 2.2,
+    timeScale: 1.22,
+    gains: { insight: 1 },
+    visible: () => true
   },
   {
-    id: "photosynthesis",
-    name: "Photosynthesis",
-    description: "Sunlight becomes stored energy. The atmosphere will never be the same.",
-    cost: 650,
-    clickBonus: 5,
-    rateBonus: 1.5,
-    era: "Microbial World",
-    organism: "Cyanobacteria"
+    id: "vents",
+    era: 1,
+    name: "Hydrothermal Vents",
+    icon: "⚡",
+    color: "orange",
+    description: "Mineral chimneys provide heat, pressure, and gradients.",
+    baseTime: 2.6,
+    timeScale: 1.24,
+    gains: { energy: 1 },
+    visible: () => true
   },
   {
-    id: "multicellular",
-    name: "Multicellularity",
-    description: "Cells specialize. Bodies become possible.",
-    cost: 3500,
-    clickBonus: 12,
-    rateBonus: 6,
-    era: "Complex Life",
-    organism: "Simple Colony"
+    id: "catalysts",
+    era: 1,
+    name: "Mineral Catalysts",
+    icon: "⛏️",
+    color: "blue",
+    description: "Stone surfaces make unlikely reactions repeatable.",
+    baseTime: 4,
+    timeScale: 1.28,
+    gains: { speed: 0.03 },
+    requires: { amino: 3, vents: 2 },
+    visible: s => level(s, "amino") >= 3 || level(s, "vents") >= 2
   },
   {
-    id: "eyes",
-    name: "Eyes",
-    description: "The world becomes visible. Predators and prey enter a new arms race.",
-    cost: 15000,
-    clickBonus: 30,
-    rateBonus: 18,
-    era: "Cambrian Bloom",
-    organism: "Early Animal"
+    id: "protocells",
+    era: 2,
+    name: "Protocells",
+    icon: "🫧",
+    color: "green",
+    description: "Chemistry gathers into tiny compartments with persistence.",
+    baseTime: 5,
+    timeScale: 1.25,
+    gains: { biomass: 5, complexity: 1 },
+    requires: { amino: 8, membranes: 8 },
+    visible: s => level(s, "amino") >= 6 && level(s, "membranes") >= 6
   },
   {
-    id: "land",
-    name: "Move Onto Land",
-    description: "Fins, lungs, and stubbornness carry life beyond the waterline.",
-    cost: 80000,
-    clickBonus: 80,
-    rateBonus: 75,
-    era: "Landfall",
-    organism: "Amphibious Pioneer"
+    id: "replication",
+    era: 2,
+    name: "Replication",
+    icon: "🧬",
+    color: "cyan",
+    description: "Life learns the central trick: make another version of itself.",
+    baseTime: 5.5,
+    timeScale: 1.26,
+    gains: { biomass: 8, adaptation: 1 },
+    requires: { rna: 8, amino: 6 },
+    visible: s => level(s, "rna") >= 6
+  },
+  {
+    id: "metabolism",
+    era: 2,
+    name: "Metabolism",
+    icon: "⚡",
+    color: "orange",
+    description: "Energy becomes a managed process instead of a lucky accident.",
+    baseTime: 6,
+    timeScale: 1.27,
+    gains: { energy: 4, biomass: 4 },
+    requires: { vents: 8, catalysts: 4 },
+    visible: s => level(s, "vents") >= 6 && level(s, "catalysts") >= 2
+  },
+  {
+    id: "dna",
+    era: 2,
+    name: "DNA",
+    icon: "💡",
+    color: "pink",
+    description: "Genetic memory becomes sturdier and more expandable.",
+    baseTime: 8,
+    timeScale: 1.3,
+    gains: { insight: 5, stability: 3, complexity: 2 },
+    requires: { replication: 5, protocells: 5 },
+    visible: s => level(s, "replication") >= 3 && level(s, "protocells") >= 3
   }
 ];
 
-let state = {
-  biomass: 0,
-  clickPower: 1,
-  biomassRate: 0,
-  purchased: [],
-  era: "Primordial Soup",
-  organism: "Prebiotic Chemistry",
+const defaultState = {
+  selected: "amino",
+  progress: {},
+  levels: {},
+  resources: {
+    biomass: 0,
+    insight: 0,
+    energy: 0,
+    stability: 0,
+    adaptation: 0,
+    complexity: 0,
+    tools: 0
+  },
+  speedBonus: 0,
   lastTick: Date.now()
 };
 
+let state = structuredClone(defaultState);
+
 const els = {
-  biomass: document.getElementById("biomass"),
-  biomassRate: document.getElementById("biomassRate"),
-  clickBtn: document.getElementById("clickBtn"),
+  researchList: document.getElementById("researchList"),
+  biomassDisplay: document.getElementById("biomassDisplay"),
+  insightMult: document.getElementById("insightMult"),
+  energyMult: document.getElementById("energyMult"),
+  stabilityMult: document.getElementById("stabilityMult"),
+  adaptationDisplay: document.getElementById("adaptationDisplay"),
+  complexityDisplay: document.getElementById("complexityDisplay"),
+  toolDisplay: document.getElementById("toolDisplay"),
+  speedDisplay: document.getElementById("speedDisplay"),
   resetBtn: document.getElementById("resetBtn"),
-  upgrades: document.getElementById("upgrades"),
-  eraName: document.getElementById("eraName"),
-  organismName: document.getElementById("organismName"),
-  timeline: document.getElementById("timeline"),
-  progressFill: document.getElementById("progressFill"),
-  nextDiscoveryText: document.getElementById("nextDiscoveryText")
+  eraTwoTab: document.getElementById("eraTwoTab")
 };
 
-function save() {
-  localStorage.setItem("evolutionIdleSave", JSON.stringify(state));
-}
-
-function load() {
-  const saved = localStorage.getItem("evolutionIdleSave");
-  if (saved) state = { ...state, ...JSON.parse(saved), lastTick: Date.now() };
+function level(s, id) {
+  return s.levels[id] || 0;
 }
 
 function format(num) {
   if (num < 1000) return num.toFixed(num < 10 ? 1 : 0);
   if (num < 1_000_000) return (num / 1000).toFixed(2) + "K";
-  return (num / 1_000_000).toFixed(2) + "M";
+  if (num < 1_000_000_000) return (num / 1_000_000).toFixed(2) + "M";
+  return (num / 1_000_000_000).toFixed(2) + "B";
 }
 
-function availableUpgrades() {
-  return upgrades.filter(u => !state.purchased.includes(u.id));
+function gainText(def) {
+  return Object.entries(def.gains).map(([key, value]) => {
+    const icons = { biomass: "🧬", insight: "💡", energy: "⚡", stability: "🛡️", adaptation: "🧭", complexity: "✦", tools: "🔨", speed: "⏩" };
+    const prefix = key === "speed" ? "+" + Math.round(value * 100) + "%" : "+" + value;
+    return `${prefix} ${icons[key] || key}`;
+  }).join(" ");
 }
 
-function buyUpgrade(id) {
-  const upgrade = upgrades.find(u => u.id === id);
-  if (!upgrade || state.biomass < upgrade.cost || state.purchased.includes(id)) return;
+function isUnlocked(def) {
+  if (!def.requires) return true;
+  return Object.entries(def.requires).every(([id, req]) => level(state, id) >= req);
+}
 
-  state.biomass -= upgrade.cost;
-  state.clickPower += upgrade.clickBonus;
-  state.biomassRate += upgrade.rateBonus;
-  state.purchased.push(id);
-  state.era = upgrade.era;
-  state.organism = upgrade.organism;
-  addTimeline(upgrade.name, upgrade.description);
+function visibleResearch() {
+  return researchDefs.filter(def => def.visible(state));
+}
+
+function researchTime(def) {
+  return def.baseTime * Math.pow(def.timeScale, level(state, def.id));
+}
+
+function researchSpeed() {
+  return 1 + state.speedBonus + (state.resources.insight * 0.002) + (state.resources.energy * 0.0015);
+}
+
+function selectResearch(id) {
+  const def = researchDefs.find(r => r.id === id);
+  if (!def || !isUnlocked(def)) return;
+  state.selected = id;
   save();
   render();
 }
 
-function addTimeline(title, text) {
-  const events = JSON.parse(localStorage.getItem("evolutionIdleTimeline") || "[]");
-  events.unshift({ title, text });
-  localStorage.setItem("evolutionIdleTimeline", JSON.stringify(events.slice(0, 12)));
-}
+function completeResearch(def) {
+  state.progress[def.id] = 0;
+  state.levels[def.id] = level(state, def.id) + 1;
 
-function renderTimeline() {
-  const events = JSON.parse(localStorage.getItem("evolutionIdleTimeline") || "[]");
-  els.timeline.innerHTML = events.length
-    ? events.map(e => `<div class="event"><strong>${e.title}</strong>${e.text}</div>`).join("")
-    : `<div class="event"><strong>Awaiting Abiogenesis</strong>Your timeline begins with the first discovery.</div>`;
-}
-
-function renderUpgrades() {
-  els.upgrades.innerHTML = availableUpgrades().map(u => `
-    <div class="upgrade">
-      <h3>${u.name}</h3>
-      <p>${u.description}</p>
-      <div class="upgrade-footer">
-        <span class="cost">${format(u.cost)} biomass</span>
-        <button onclick="buyUpgrade('${u.id}')" ${state.biomass < u.cost ? "disabled" : ""}>Discover</button>
-      </div>
-    </div>
-  `).join("") || `<p class="subtitle">You have discovered everything in this tiny prototype. Time to add prestige, eras, and branching paths.</p>`;
-}
-
-function renderProgress() {
-  const next = availableUpgrades()[0];
-  if (!next) {
-    els.nextDiscoveryText.textContent = "Prototype Complete";
-    els.progressFill.style.width = "100%";
-    return;
+  for (const [key, value] of Object.entries(def.gains)) {
+    if (key === "speed") state.speedBonus += value;
+    else state.resources[key] += value * (1 + level(state, def.id) * 0.08);
   }
-  els.nextDiscoveryText.textContent = next.name;
-  const percent = Math.min(100, (state.biomass / next.cost) * 100);
-  els.progressFill.style.width = `${percent}%`;
+}
+
+function renderResearch() {
+  els.researchList.innerHTML = visibleResearch().map(def => {
+    const unlocked = isUnlocked(def);
+    const currentLevel = level(state, def.id);
+    const time = researchTime(def);
+    const progress = ((state.progress[def.id] || 0) / time) * 100;
+    const reqText = def.requires
+      ? Object.entries(def.requires).map(([id, req]) => `${researchDefs.find(r => r.id === id).name} ${req}`).join(" · ")
+      : "Available";
+
+    return `
+      <button class="research-row ${def.color} ${state.selected === def.id ? "selected" : ""} ${unlocked ? "" : "locked"}" data-id="${def.id}">
+        <div class="level-box">${currentLevel}</div>
+        <div class="research-main">
+          <div class="research-title">${def.name}</div>
+          <div class="research-desc">${unlocked ? def.description : "Requires: " + reqText}</div>
+          <div class="bar"><div class="fill" style="width:${Math.min(100, progress)}%"></div></div>
+        </div>
+        <div class="reward-box">${gainText(def)}<span class="row-icon">${def.icon}</span></div>
+      </button>`;
+  }).join("");
+
+  document.querySelectorAll(".research-row").forEach(row => {
+    row.addEventListener("click", () => selectResearch(row.dataset.id));
+  });
+}
+
+function renderResources() {
+  els.biomassDisplay.textContent = format(state.resources.biomass);
+  els.insightMult.textContent = "x" + (1 + state.resources.insight * 0.01).toFixed(2);
+  els.energyMult.textContent = "x" + (1 + state.resources.energy * 0.01).toFixed(2);
+  els.stabilityMult.textContent = "x" + (1 + state.resources.stability * 0.01).toFixed(2);
+  els.adaptationDisplay.textContent = format(state.resources.adaptation);
+  els.complexityDisplay.textContent = format(state.resources.complexity);
+  els.toolDisplay.textContent = format(state.resources.tools);
+  els.speedDisplay.textContent = researchSpeed().toFixed(2);
+  if (visibleResearch().some(r => r.era === 2)) els.eraTwoTab.classList.remove("locked");
 }
 
 function render() {
-  els.biomass.textContent = format(state.biomass);
-  els.biomassRate.textContent = format(state.biomassRate);
-  els.eraName.textContent = state.era;
-  els.organismName.textContent = state.organism;
-  renderUpgrades();
-  renderTimeline();
-  renderProgress();
+  renderResearch();
+  renderResources();
 }
 
-els.clickBtn.addEventListener("click", () => {
-  state.biomass += state.clickPower;
-  render();
-});
+function save() {
+  localStorage.setItem("evolutionIdleSaveV2", JSON.stringify(state));
+}
 
-els.resetBtn.addEventListener("click", () => {
-  if (!confirm("Reset your Evolution Idle save?")) return;
-  localStorage.removeItem("evolutionIdleSave");
-  localStorage.removeItem("evolutionIdleTimeline");
-  location.reload();
-});
+function load() {
+  const saved = localStorage.getItem("evolutionIdleSaveV2");
+  if (!saved) return;
+  state = { ...structuredClone(defaultState), ...JSON.parse(saved), lastTick: Date.now() };
+}
 
 function loop() {
   const now = Date.now();
-  const delta = (now - state.lastTick) / 1000;
+  const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
-  state.biomass += state.biomassRate * delta;
+
+  const active = researchDefs.find(r => r.id === state.selected);
+  if (active && isUnlocked(active)) {
+    state.progress[active.id] = (state.progress[active.id] || 0) + delta * researchSpeed();
+    if (state.progress[active.id] >= researchTime(active)) completeResearch(active);
+  }
+
   render();
   save();
   requestAnimationFrame(loop);
 }
+
+els.resetBtn.addEventListener("click", () => {
+  if (!confirm("Reset your Evolution Idle save?")) return;
+  localStorage.removeItem("evolutionIdleSaveV2");
+  location.reload();
+});
 
 load();
 render();
